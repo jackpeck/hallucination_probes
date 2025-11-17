@@ -6,9 +6,9 @@ readme = "README.md"
 requires-python = ">=3.10,<3.12"
 
 dependencies = [
-  "torch>=2.4.0", # provided by a base nvidia image
+  "torch>=2.4.0",
   "transformers>=4.30.0",
-  "peft>=0.5.0",
+  "peft>=0.5.0,<=0.17.1",
   "datasets>=2.0.0",
   "numpy>=1.24.0,<2",
   "tqdm>=4.65.0",
@@ -64,3 +64,13 @@ build-backend = "setuptools.build_meta"
 [tool.uv.sources]
 # uv will install safetytooling from this git repo when requested
 safetytooling = { git = "https://github.com/safety-research/safety-tooling.git", rev = "main" }
+
+torch = [
+  { index = "pytorch-cu128", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true

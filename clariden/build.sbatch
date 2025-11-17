@@ -3,7 +3,7 @@
 #SBATCH -p debug
 #SBATCH --time=00:40:00
 #SBATCH --job-name=build-uv-hallucination
-#SBATCH --output=build-uv-hallucination-%j.out
+#SBATCH --output=log/build-uv-hallucination-%j.out
 
 set -euo pipefail
 
