@@ -19,7 +19,7 @@ from safetytooling.data_models import ChatMessage, MessageRole, Prompt, LLMRespo
 
 from utils.parsing import parse_and_validate_json
 from utils.string_utils import try_matching_span_in_text
-from .data_models import AnnotatedSpan
+from annotation_pipeline.data_models import AnnotatedSpan
 
 logger = logging.getLogger(__name__)
 

@@ -18,10 +18,10 @@ from utils.file_utils import save_jsonl, save_json, load_yaml
 from utils.model_utils import load_model_and_tokenizer, print_trainable_parameters
 from utils.probe_loader import upload_probe_to_hf
 
-from .dataset import TokenizedProbingDataset, create_probing_dataset, tokenized_probing_collate_fn
-from .config import TrainingConfig
-from .value_head_probe import setup_probe
-from .trainer import ProbeTrainer
+from probe.dataset import TokenizedProbingDataset, create_probing_dataset, tokenized_probing_collate_fn
+from probe.config import TrainingConfig
+from probe.value_head_probe import setup_probe
+from probe.trainer import ProbeTrainer
 
 
 def main(training_config: TrainingConfig):

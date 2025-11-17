@@ -16,11 +16,11 @@ from peft import PeftModel
 from utils.file_utils import save_jsonl
 from utils.metrics import print_eval_metrics
 
-from .dataset import TokenizedProbingDataset
-from .config import TrainingConfig
-from .loss import compute_probe_bce_loss, compute_kl_divergence_loss, compute_probe_max_aggregation_loss, mask_high_loss_spans
-from .value_head_probe import ValueHeadProbe
-from .evaluate import evaluate_probe
+from probe.dataset import TokenizedProbingDataset
+from probe.config import TrainingConfig
+from probe.loss import compute_probe_bce_loss, compute_kl_divergence_loss, compute_probe_max_aggregation_loss, mask_high_loss_spans
+from probe.value_head_probe import ValueHeadProbe
+from probe.evaluate import evaluate_probe
 
 
 class ProbeTrainer(Trainer):

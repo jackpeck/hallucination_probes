@@ -4,7 +4,7 @@ from typing import Callable, Dict, List, Optional
 
 from datasets import Dataset
 
-from .types import AnnotatedSpan, ProbingItem
+from probe.types import AnnotatedSpan, ProbingItem
 
 
 # Mapping from text labels to numeric values for probe training

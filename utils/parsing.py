@@ -6,7 +6,7 @@ from typing import Any, List, Type, TypeVar, Union
 from pydantic import BaseModel, parse_obj_as
 from pydantic_core import from_json
 
-from .string_utils import normalize_text
+from utils.string_utils import normalize_text
 
 
 T = TypeVar('T', bound=BaseModel)

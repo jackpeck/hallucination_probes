@@ -15,8 +15,8 @@ from tqdm import tqdm
 from transformers import AutoTokenizer
 
 from utils.tokenization import find_assistant_tokens_slice, find_string_in_tokens, slice_to_list
-from .types import AnnotatedSpan, ProbingItem
-from .dataset_converters import get_prepare_function
+from probe.types import AnnotatedSpan, ProbingItem
+from probe.dataset_converters import get_prepare_function
 
 @dataclass
 class TokenizedProbingDatasetConfig:

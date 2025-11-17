@@ -1,16 +1,16 @@
 [project]
 name = "hallucination-probes"
 version = "0.1.0"
-description = "Real-Time Detection of Hallucinated Entities in Long-Form Generation"
+description = "Multitoken Hallucination Probes for Apertus"
 readme = "README.md"
 requires-python = ">=3.10,<3.12"
 
 dependencies = [
-  "torch>=2.0.0",
+  "torch>=2.4.0", # provided by a base nvidia image
   "transformers>=4.30.0",
   "peft>=0.5.0",
   "datasets>=2.0.0",
-  "numpy>=1.24.0",
+  "numpy>=1.24.0,<2",
   "tqdm>=4.65.0",
   "pyyaml>=6.0",
   "python-dotenv>=1.0.0",
@@ -25,7 +25,10 @@ dependencies = [
   "simple-parsing>=0.1.5",
   "pydantic>=2.6.0",
   "rouge-score>=0.1.2",
-  "safetytooling",
+  # install safetytooling directly from Git for pip
+  "safetytooling @ git+https://github.com/safety-research/safety-tooling.git@main",
+  # safetytooling dependency
+  "opencv-python==4.8.0.74",
   # Demo
   "modal>=0.61.0",
   "plotly>=5.22.0",
@@ -61,6 +64,3 @@ build-backend = "setuptools.build_meta"
 [tool.uv.sources]
 # uv will install safetytooling from this git repo when requested
 safetytooling = { git = "https://github.com/safety-research/safety-tooling.git", rev = "main" }
-
-
-

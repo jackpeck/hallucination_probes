@@ -25,8 +25,8 @@ from safetytooling.apis import InferenceAPI
 
 from utils.file_utils import load_jsonl, save_jsonl
 from utils.parsing import validate_dicts_to_pydantic
-from .annotate import annotate_completion
-from .data_models import DatasetItem, AnnotatedSpan
+from annotation_pipeline.annotate import annotate_completion
+from annotation_pipeline.data_models import DatasetItem, AnnotatedSpan
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

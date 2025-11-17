@@ -6,7 +6,7 @@ from typing import List, Optional, Union, Literal
 
 from utils.probe_loader import LOCAL_PROBES_DIR
 from utils.model_utils import get_num_layers
-from .dataset import TokenizedProbingDatasetConfig
+from probe.dataset import TokenizedProbingDatasetConfig
 
 @dataclass
 class ProbeConfig:
