@@ -4,6 +4,7 @@
 #SBATCH --time=00:40:00
 #SBATCH --job-name=build-uv-hallucination
 #SBATCH --output=log/build-uv-hallucination-%j.out
+#SBATCH --error=log/build-uv-hallucination-%j.err
 
 set -euo pipefail
 
