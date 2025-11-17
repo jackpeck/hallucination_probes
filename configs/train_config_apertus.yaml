@@ -1,0 +1,192 @@
+# Example training configuration for hallucination detection probe
+
+probe_config:
+  probe_id: "clean_code_apertus_1_8b_lora"
+  
+  model_name: "swiss-ai/Apertus-8B-Instruct-2509"
+  layer: 30  # Second to last layer for Llama 3.1 8B
+
+  lora_layers: "all"
+  lora_r: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+
+  load_from: null
+  hf_repo_id: "obalcells/hallucination-probes"
+
+  threshold: 0.5
+
+
+wandb_project: "hallucination-probes"
+
+upload_to_hf: false
+save_evaluation_metrics: true
+save_roc_curves: false
+dump_raw_eval_results: false
+
+# Training hyperparameters
+per_device_train_batch_size: 4
+per_device_eval_batch_size: 4
+high_loss_threshold: null
+lambda_lm: 0.0
+lambda_kl: 0.5
+anneal_max_aggr: true
+anneal_warmup: 1.0
+probe_head_lr: 1e-3
+lora_lr: 1e-4
+enable_gradient_checkpointing: true
+gradient_accumulation_steps: 1
+max_grad_norm: 1.0
+logging_steps: 10
+seed: 42
+
+# Training datasets
+train_datasets:
+  - dataset_id: "llama3_1_8b_longfact_train"
+    hf_repo: "obalcells/longfact-annotations"
+    subset: "Meta-Llama-3.1-8B-Instruct"
+    split: "train"
+    max_length: 1536
+    default_ignore: false
+    last_span_token: false
+    ignore_buffer: 0
+    pos_weight: 10.0
+    neg_weight: 10.0
+    shuffle: true
+    seed: 42
+    process_on_the_fly: false
+
+  - dataset_id: "llama3_1_8b_longfact_augmented_train"
+    hf_repo: "obalcells/longfact-augmented-annotations"
+    subset: "Meta-Llama-3.1-8B-Instruct"
+    split: "train"
+    max_length: 1536
+    default_ignore: false
+    last_span_token: false
+    ignore_buffer: 0
+    pos_weight: 10.0
+    neg_weight: 10.0
+    shuffle: true
+    seed: 42
+    process_on_the_fly: false
+
+  - dataset_id: "llama3_3_70b_longfact_train"
+    hf_repo: "obalcells/longfact-annotations"
+    subset: "Llama-3.3-70B-Instruct"
+    split: "train"
+    max_length: 1536
+    default_ignore: false
+    last_span_token: false
+    ignore_buffer: 0
+    pos_weight: 10.0
+    neg_weight: 10.0
+    shuffle: true
+    seed: 42
+    process_on_the_fly: false
+
+  - dataset_id: "llama3_3_70b_longfact_augmented_train"
+    hf_repo: "obalcells/longfact-augmented-annotations"
+    subset: "Llama-3.3-70B-Instruct"
+    split: "train"
+    max_length: 1536
+    default_ignore: false
+    last_span_token: false
+    ignore_buffer: 0
+    pos_weight: 10.0
+    neg_weight: 10.0
+    shuffle: true
+    seed: 42
+    process_on_the_fly: false
+
+  - dataset_id: "qwen2_5_7b_longfact_augmented_train"
+    hf_repo: "obalcells/longfact-augmented-annotations"
+    subset: "Qwen2.5-7B-Instruct"
+    split: "train"
+    max_length: 1536
+    default_ignore: false
+    last_span_token: false
+    ignore_buffer: 0
+
+  - dataset_id: "gemma2_9b_longfact_augmented_train"
+    hf_repo: "obalcells/longfact-augmented-annotations"
+    subset: "gemma-2-9b-it"
+    split: "train"
+    max_length: 1536
+    default_ignore: false
+    last_span_token: false
+    ignore_buffer: 0
+    pos_weight: 10.0
+    neg_weight: 10.0
+    shuffle: true
+    seed: 42
+    process_on_the_fly: false
+
+  - dataset_id: "mistral_small_24b_longfact_augmented_train"
+    hf_repo: "obalcells/longfact-augmented-annotations"
+    subset: "Mistral-Small-24B-Instruct-2501"
+    split: "train"
+    max_length: 1536
+    default_ignore: false
+    last_span_token: false
+    ignore_buffer: 0
+    pos_weight: 10.0
+    neg_weight: 10.0
+    shuffle: true
+    seed: 42
+    process_on_the_fly: false
+
+  - dataset_id: "llama3_1_8b_trivia_qa_train"
+    hf_repo: "obalcells/triviaqa-balanced"
+    subset: "Meta-Llama-3.1-8B-Instruct"
+    split: "train"
+    max_length: 1536
+    default_ignore: true
+    last_span_token: false
+    ignore_buffer: 0
+    pos_weight: 10.0
+    neg_weight: 10.0
+    shuffle: true
+    seed: 42
+    process_on_the_fly: false
+
+# Evaluation datasets
+eval_datasets:
+  - dataset_id: "llama3_1_8b_longform_test"
+    hf_repo: "obalcells/longfact-annotations"
+    subset: "Meta-Llama-3.1-8B-Instruct"
+    split: "test"
+    max_length: 1536
+    pos_weight: 10.0
+    neg_weight: 10.0
+    default_ignore: false
+    shuffle: false
+
+  - dataset_id: "llama3_1_8b_longform_augmented_test"
+    hf_repo: "obalcells/longfact-augmented-annotations"
+    subset: "Meta-Llama-3.1-8B-Instruct"
+    split: "test"
+    max_length: 1536
+    pos_weight: 10.0
+    neg_weight: 10.0
+    default_ignore: false
+    shuffle: false
+
+  - dataset_id: "llama3_1_8b_trivia_qa_test"
+    hf_repo: "obalcells/triviaqa-balanced"
+    subset: "Meta-Llama-3.1-8B-Instruct"
+    split: "test"
+    max_length: 128
+    pos_weight: 10.0
+    neg_weight: 10.0
+    default_ignore: false
+    shuffle: false
+  
+  - dataset_id: "llama3_1_8b_healthbench_test"
+    hf_repo: "obalcells/healthbench-annotations"
+    subset: "Meta-Llama-3.1-8B-Instruct"
+    split: "test"
+    max_length: 1536
+    pos_weight: 1.0
+    neg_weight: 1.0
+    default_ignore: false
+    shuffle: false
