@@ -11,6 +11,3 @@ Readme of the original repository can be found [here](README.old.md).
 ## Setup
 We moved from `uv` to simple `pip` setup because of problems with torch cuda dependencies.
 Maybe it will be good to switch back to uv, but I found out this setup to be working just fine.
-
-## TODO
-current list of things todo is [here](./TODO.md).
