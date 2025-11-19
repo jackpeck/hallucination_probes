@@ -12,3 +12,5 @@ Notice, that there is no uv env installed in the container, there is just a glob
 
 [train.sbatch](./train.sbatch) can be used to run a sbatch job on the cluster
 when it comes to setting up an interactive session, clariden docs are reaaally useful
+
+To enable logging to huggingface, create a file `~/keys/hf_token` with your token.
