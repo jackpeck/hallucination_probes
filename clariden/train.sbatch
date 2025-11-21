@@ -4,7 +4,7 @@
 #SBATCH --time=04:00:00
 #SBATCH --job-name=train-probe-single-gpu
 #SBATCH --output=log/%x-%j.out
-#SBATCH --output=log/%x-%j.err
+#SBATCH --error=log/%x-%j.err
 #SBATCH --environment=/iopsstor/scratch/cscs/tkwiecinski/hallucination_probes/clariden/env.toml
 
 set -euo pipefail
@@ -20,6 +20,11 @@ export HF_TOKEN="$(cat ~/keys/.hf_token)"
 
 cd /workspace/hallucination_probes/
 git pull
+
+uv pip install transformers==4.56.0 --system
+
+
+export CUDA_VISIBLE_DEVICES=0
 python probe/train.py --config=configs/train_config_slim_llama.yaml
 
 # srun --account=large-sc-2 -p normal  --time=01:00:00 --environment=/iopsstor/scratch/cscs/tkwiecinski/hallucination_probes/clariden/env.toml --pty bash
