@@ -16,6 +16,9 @@ export HF_HUB_CACHE=/capstor/scratch/cscs/tkwiecinski/hallucination_probes/hf_ca
 
 # private keys
 export HF_TOKEN="$(cat ~/keys/.hf_token)"
+if [[ -f ~/keys/.wandb_key ]]; then
+    export WANDB_API_KEY="$(cat ~/keys/.wandb_key)"
+fi
 
 
 cd /workspace/hallucination_probes/
