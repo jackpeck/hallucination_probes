@@ -24,9 +24,6 @@ fi
 cd /workspace/hallucination_probes/
 git pull
 
-uv pip install transformers==4.56.0 --system
-
-
 export CUDA_VISIBLE_DEVICES=0
 python probe/train.py --config=configs/train_config_slim_llama.yaml
 
