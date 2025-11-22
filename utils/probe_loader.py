@@ -11,7 +11,11 @@ from huggingface_hub import HfApi, hf_hub_download, login
 from huggingface_hub.utils import validate_repo_id
 
 # Default directory for saving probes locally
-LOCAL_PROBES_DIR = Path(__file__).parent.parent / "value_head_probes"
+env_dir = os.getenv("LOCAL_PROBES_DIR")
+if env_dir:
+    LOCAL_PROBES_DIR = Path(env_dir)
+else:
+    LOCAL_PROBES_DIR = Path(__file__).parent.parent / "value_head_probes"
 
 def download_probe_from_hf(
     repo_id: str,
