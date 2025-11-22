@@ -2,7 +2,7 @@
 #SBATCH --account=large-sc-2
 #SBATCH -p normal
 #SBATCH --time=04:00:00
-#SBATCH --job-name=train-probe-single-gpu
+#SBATCH --job-name=train-probe-single-gpu-apertus
 #SBATCH --output=log/%x-%j.out
 #SBATCH --error=log/%x-%j.err
 #SBATCH --environment=/iopsstor/scratch/cscs/tkwiecinski/hallucination_probes/clariden/env.toml
@@ -20,11 +20,13 @@ if [[ -f ~/keys/.wandb_key ]]; then
     export WANDB_API_KEY="$(cat ~/keys/.wandb_key)"
 fi
 
-
+# change this to your repo path
 cd /workspace/hallucination_probes/
 git pull
 
 export CUDA_VISIBLE_DEVICES=0
-python probe/train.py --config=configs/train_config_slim_llama.yaml
+uv pip install --no-deps  . --system
+
+python probe/train.py --config=configs/train_config_apertus.yaml
 
 # srun --account=large-sc-2 -p normal  --time=01:00:00 --environment=/iopsstor/scratch/cscs/tkwiecinski/hallucination_probes/clariden/env.toml --pty bash
