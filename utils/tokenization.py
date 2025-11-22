@@ -78,6 +78,7 @@ def find_assistant_tokens_slice(
         '<|im_start|>assistant',  # qwen end-of-turn tokens
         '<start_of_turn>model',  # gemma end-of-turn tokens
         "[/INST]",  # mistral end-of-turn tokens
+        "<|user_end|><|assistant_start|>", # apertus end-of-turn tokens
     ]
     
     for eot_token in eot_tokens:
