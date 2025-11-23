@@ -37,6 +37,7 @@ class ValueHeadProbe(nn.Module):
         model: Union[AutoModelForCausalLM, PeftModel],
         layer_idx: Optional[int] = None,
         path: Optional[Union[str, Path]] = None,
+        context_window_size: Optional[int] = 1,
     ):
         """
         Initialize the ValueHeadProbe.
@@ -66,6 +67,7 @@ class ValueHeadProbe(nn.Module):
         self.layer_idx = layer_idx
         self.target_module = model_layers[layer_idx]
         self.target_layer_name = self.target_module.__class__.__name__
+        self.context_window = []
         
         if not isinstance(model, PeftModel):
             print("WARNING: Model is not a PeftModel. Remember to add LoRA adapters if needed.")
@@ -80,7 +82,7 @@ class ValueHeadProbe(nn.Module):
             )
         else:
             self.value_head = nn.Linear(
-                hidden_size, 1, 
+                hidden_size * context_window_size, 1, 
                 device=model.device, 
                 dtype=model.dtype
             )
@@ -153,10 +155,21 @@ class ValueHeadProbe(nn.Module):
         # Check that hidden states were captured
         if self._hooked_hidden_states is None:
             raise RuntimeError("Failed to capture hidden states from target layer")
+        
+        # Build context window
+        if len(self.context_window) < self.context_window_size:
+            self.context_window.append(self._hooked_hidden_states)
+            # Pad with zeros if not enough context
+            while len(self.context_window) < self.context_window_size:
+                self.context_window.insert(0, torch.zeros_like(self._hooked_hidden_states))
+        else:
+            self.context_window.pop(0)
+            self.context_window.append(self._hooked_hidden_states)
+        
+        # Concatenate context window hidden states
+        context_hidden_states = torch.cat(self.context_window, dim=-1, device=self.value_head.weight.device)
 
-        probe_logits: Float[Tensor, 'batch_size seq_len 1'] = self.value_head(
-            self._hooked_hidden_states.to(self.value_head.weight.device)
-        )
+        probe_logits: Float[Tensor, 'batch_size seq_len 1'] = self.value_head(context_hidden_states)
 
         return {
             "lm_logits": outputs.logits,
@@ -286,6 +299,11 @@ def setup_probe(
             )
         
         # Initialize new probe with specified layer
-        probe = ValueHeadProbe(model, layer_idx=probe_config.layer)
-    
+
+        probe = ValueHeadProbe(
+            model, 
+            layer_idx=probe_config.layer,
+            context_window_size=probe_config.context_window_size
+        )
+  
     return model, probe

@@ -28,6 +28,7 @@ class ProbeConfig:
     hf_repo_id: Optional[str] = "andyrdt/hallucination-probes"  # HuggingFace repository ID
     
     threshold: float = 0.5  # Classification threshold
+    context_window_size: int = 1  # Size of context window for the probe
     
     def __post_init__(self):
         """Validate configuration."""
@@ -42,6 +43,9 @@ class ProbeConfig:
         if self.layer is None:
             # default to hooking the value head at the last layer of the underlying LM
             self.layer = get_num_layers(self.model_name) - 1
+        
+        if (not isinstance(self.context_window_size, int) or self.context_window_size < 0):
+            raise ValueError("context_window must be a positive integer.")
 
         if isinstance(self.lora_layers, str):
             if self.lora_layers == 'all':
