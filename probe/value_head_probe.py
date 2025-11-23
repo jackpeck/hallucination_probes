@@ -67,6 +67,7 @@ class ValueHeadProbe(nn.Module):
         self.layer_idx = layer_idx
         self.target_module = model_layers[layer_idx]
         self.target_layer_name = self.target_module.__class__.__name__
+        self.context_window_size = context_window_size
         self.context_window = []
         
         if not isinstance(model, PeftModel):
