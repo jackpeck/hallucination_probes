@@ -20,7 +20,7 @@ probe_config:
 
 wandb_project: "hallucination-probes"
 
-upload_to_hf: true
+upload_to_hf: false
 save_evaluation_metrics: true
 save_roc_curves: false
 dump_raw_eval_results: false
