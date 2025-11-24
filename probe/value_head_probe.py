@@ -159,7 +159,7 @@ class ValueHeadProbe(nn.Module):
         
         shifted = [self._hooked_hidden_states]
         for k in range(1, self.context_window_size):
-            s = context_hidden_states.roll(k, dims=1)
+            s = self._hooked_hidden_states.roll(k, dims=1)
             s[:, :k, :] = 0   # zero-pad wrapped positions
             shifted.append(s)
         
