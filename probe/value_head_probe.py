@@ -157,18 +157,14 @@ class ValueHeadProbe(nn.Module):
         if self._hooked_hidden_states is None:
             raise RuntimeError("Failed to capture hidden states from target layer")
         
-        # Build context window
-        if len(self.context_window) < self.context_window_size:
-            self.context_window.append(self._hooked_hidden_states)
-            # Pad with zeros if not enough context
-            while len(self.context_window) < self.context_window_size:
-                self.context_window.insert(0, torch.zeros_like(self._hooked_hidden_states))
-        else:
-            self.context_window.pop(0)
-            self.context_window.append(self._hooked_hidden_states)
+        shifted = [self._hooked_hidden_states]
+        for k in range(1, self.context_window_size):
+            s = context_hidden_states.roll(k, dims=1)
+            s[:, :k, :] = 0   # zero-pad wrapped positions
+            shifted.append(s)
         
         # Concatenate context window hidden states
-        context_hidden_states = torch.cat(self.context_window, dim=-1, device=self.value_head.weight.device)
+        context_hidden_states = torch.cat(shifted, dim=-1)
 
         probe_logits: Float[Tensor, 'batch_size seq_len 1'] = self.value_head(context_hidden_states)
 
