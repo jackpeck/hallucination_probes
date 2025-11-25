@@ -1,7 +1,7 @@
 # Example training configuration for hallucination detection probe
 
 probe_config:
-  probe_id: "apertus-8B-10-context"
+  probe_id: "llama-8B-5-context"
 
   model_name: "meta-llama/Meta-Llama-3.1-8B-Instruct"
   layer: 30  # Second to last layer for Llama 3.1 8B
