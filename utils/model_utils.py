@@ -25,7 +25,7 @@ def get_device() -> torch.device:
 
 def load_model_and_tokenizer(
     model_name: str,
-    device_map: Optional[Union[str, dict]] = "auto",
+    device_map: Optional[Union[str, dict]] = "balanced",
     torch_dtype: Optional[torch.dtype] = None,
 ) -> Tuple[AutoModelForCausalLM, AutoTokenizer]:
     """
