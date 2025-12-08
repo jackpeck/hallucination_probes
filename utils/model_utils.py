@@ -4,8 +4,13 @@ from typing import List, Optional, Tuple, Union
 
 import torch
 import torch.nn as nn
-from peft import PeftModel, LoraConfig, get_peft_model
-from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig, PreTrainedModel
+from peft import LoraConfig, PeftModel, get_peft_model
+from transformers import (
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    BitsAndBytesConfig,
+    PreTrainedModel,
+)
 
 
 def get_device() -> torch.device:
@@ -25,21 +30,23 @@ def load_model_and_tokenizer(
 ) -> Tuple[AutoModelForCausalLM, AutoTokenizer]:
     """
     Load a model and tokenizer from HuggingFace.
-    
+
     Args:
         model_name: Name or path of the model
         load_in_8bit: Whether to load in 8-bit precision
         load_in_4bit: Whether to load in 4-bit precision
         device_map: Device mapping for model parallelism
         torch_dtype: Data type for model weights
-        
+
     Returns:
         Tuple of (model, tokenizer)
     """
     # Set default dtype
     if torch_dtype is None:
-        torch_dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
-    
+        torch_dtype = (
+            torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
+        )
+
     # Load model
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
@@ -47,18 +54,16 @@ def load_model_and_tokenizer(
         torch_dtype=torch_dtype,
         trust_remote_code=True,
     )
-    
+
     # Load tokenizer
     tokenizer = AutoTokenizer.from_pretrained(
-        model_name,
-        trust_remote_code=True,
-        padding_side='right'
+        model_name, trust_remote_code=True, padding_side="right"
     )
-    
+
     # Set padding token if not set
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
-    
+
     return model, tokenizer
 
 
@@ -69,12 +74,12 @@ def setup_model_with_lora(
 ) -> PeftModel:
     """
     Setup a model with LoRA adapters.
-    
+
     Args:
         model: Base model
         lora_config: LoRA configuration dictionary
         lora_weights_path: Optional path to pre-trained LoRA weights
-        
+
     Returns:
         Model with LoRA adapters
     """
@@ -87,7 +92,7 @@ def setup_model_with_lora(
         task_type="CAUSAL_LM",
         target_modules=lora_config.get("target_modules", ["q_proj", "v_proj"]),
     )
-    
+
     # Apply LoRA to model
     if lora_weights_path:
         # Load pre-trained LoRA weights
@@ -95,17 +100,17 @@ def setup_model_with_lora(
     else:
         # Initialize new LoRA adapters
         model = get_peft_model(model, peft_config)
-    
+
     return model
 
 
 def get_model_layers(model: PreTrainedModel) -> List[nn.Module]:
     """
     Get the list of transformer layers from a model.
-    
+
     Args:
         model: The transformer model
-    
+
     Returns:
         List of layer modules
     """
@@ -114,18 +119,18 @@ def get_model_layers(model: PreTrainedModel) -> List[nn.Module]:
         base_model = model.get_base_model()
     else:
         base_model = model
-    
+
     # Common patterns for accessing layers in different model architectures
-    if hasattr(base_model, 'model') and hasattr(base_model.model, 'layers'):
+    if hasattr(base_model, "model") and hasattr(base_model.model, "layers"):
         # LLaMA, Mistral, etc.
         return list(base_model.model.layers)
-    elif hasattr(base_model, 'transformer') and hasattr(base_model.transformer, 'h'):
+    elif hasattr(base_model, "transformer") and hasattr(base_model.transformer, "h"):
         # GPT-2, GPT-J, etc.
         return list(base_model.transformer.h)
-    elif hasattr(base_model, 'encoder') and hasattr(base_model.encoder, 'layer'):
+    elif hasattr(base_model, "encoder") and hasattr(base_model.encoder, "layer"):
         # BERT, RoBERTa, etc.
         return list(base_model.encoder.layer)
-    elif hasattr(base_model, 'gpt_neox') and hasattr(base_model.gpt_neox, 'layers'):
+    elif hasattr(base_model, "gpt_neox") and hasattr(base_model.gpt_neox, "layers"):
         # GPT-NeoX
         return list(base_model.gpt_neox.layers)
     else:
@@ -135,10 +140,10 @@ def get_model_layers(model: PreTrainedModel) -> List[nn.Module]:
 def get_num_layers(model_or_name: Union[str, PreTrainedModel]) -> int:
     """
     Get the number of transformer layers in a model.
-    
+
     Args:
         model_or_name: Either a model name string or a transformer model
-    
+
     Returns:
         Number of layers
     """
@@ -163,8 +168,10 @@ def get_num_layers(model_or_name: Union[str, PreTrainedModel]) -> int:
         if model_or_name in model_layers_map:
             return model_layers_map[model_or_name]
         else:
-            raise ValueError(f"Model {model_or_name} not supported. Please add it to the model_layers_map.")
-    
+            raise ValueError(
+                f"Model {model_or_name} not supported. Please add it to the model_layers_map."
+            )
+
     # If it's a model instance, count the layers
     return len(get_model_layers(model_or_name))
 
@@ -172,10 +179,10 @@ def get_num_layers(model_or_name: Union[str, PreTrainedModel]) -> int:
 def get_model_layers_prefix(model: PreTrainedModel) -> str:
     """
     Get the prefix path to the model layers.
-    
+
     Args:
         model: The transformer model
-    
+
     Returns:
         String prefix for accessing layers (e.g., "model.layers")
     """
@@ -184,14 +191,14 @@ def get_model_layers_prefix(model: PreTrainedModel) -> str:
         base_model = model.get_base_model()
     else:
         base_model = model
-    
-    if hasattr(base_model, 'model') and hasattr(base_model.model, 'layers'):
+
+    if hasattr(base_model, "model") and hasattr(base_model.model, "layers"):
         return "model.layers"
-    elif hasattr(base_model, 'transformer') and hasattr(base_model.transformer, 'h'):
+    elif hasattr(base_model, "transformer") and hasattr(base_model.transformer, "h"):
         return "transformer.h"
-    elif hasattr(base_model, 'encoder') and hasattr(base_model.encoder, 'layer'):
+    elif hasattr(base_model, "encoder") and hasattr(base_model.encoder, "layer"):
         return "encoder.layer"
-    elif hasattr(base_model, 'gpt_neox') and hasattr(base_model.gpt_neox, 'layers'):
+    elif hasattr(base_model, "gpt_neox") and hasattr(base_model.gpt_neox, "layers"):
         return "gpt_neox.layers"
     else:
         raise ValueError(f"Unknown model architecture: {type(base_model)}")
@@ -200,10 +207,10 @@ def get_model_layers_prefix(model: PreTrainedModel) -> str:
 def get_model_hidden_size(model: PreTrainedModel) -> int:
     """
     Get the hidden size of a transformer model.
-    
+
     Args:
         model: The transformer model
-        
+
     Returns:
         Hidden size of the model
     """
@@ -212,19 +219,21 @@ def get_model_hidden_size(model: PreTrainedModel) -> int:
         base_model = model.get_base_model()
     else:
         base_model = model
-    
-    if hasattr(base_model, 'config'):
+
+    if hasattr(base_model, "config"):
         config = base_model.config
         # Try common attribute names
-        for attr in ['hidden_size', 'd_model', 'n_embd', 'embed_dim']:
+        for attr in ["hidden_size", "d_model", "n_embd", "embed_dim"]:
             if hasattr(config, attr):
                 return getattr(config, attr)
-    
+
     # If we can't find it in config, try to infer from the model structure
-    if hasattr(base_model, 'model') and hasattr(base_model.model, 'embed_tokens'):
+    if hasattr(base_model, "model") and hasattr(base_model.model, "embed_tokens"):
         return base_model.model.embed_tokens.weight.shape[1]
-    
-    raise ValueError(f"Could not determine hidden size for model type {type(base_model)}")
+
+    raise ValueError(
+        f"Could not determine hidden size for model type {type(base_model)}"
+    )
 
 
 def setup_lora_for_layers(
@@ -237,7 +246,7 @@ def setup_lora_for_layers(
 ) -> Union[PeftModel, PreTrainedModel]:
     """
     Setup LoRA adapters for specific layers in a model.
-    
+
     Args:
         model: Base model to apply LoRA to
         layer_indices: List of layer indices to apply LoRA to
@@ -245,30 +254,35 @@ def setup_lora_for_layers(
         lora_alpha: LoRA alpha scaling
         lora_dropout: LoRA dropout rate
         bias: Bias configuration for LoRA
-        
+
     Returns:
         Model with LoRA adapters applied (or original model if no layers specified)
     """
     if not layer_indices:
         print("No LoRA layers specified, returning base model")
         return model
-    
+
     # Get the layer prefix for this model architecture
     layer_prefix = get_model_layers_prefix(model)
-    
+
     # Build target modules list for the specified layers
     target_modules = []
     module_suffixes = [
-        "self_attn.q_proj", "self_attn.k_proj", "self_attn.v_proj", "self_attn.o_proj",
-        "mlp.gate_proj", "mlp.up_proj", "mlp.down_proj"
+        "self_attn.q_proj",
+        "self_attn.k_proj",
+        "self_attn.v_proj",
+        "self_attn.o_proj",
+        "mlp.gate_proj",
+        "mlp.up_proj",
+        "mlp.down_proj",
     ]
-    
+
     for layer_idx in layer_indices:
         for module_suffix in module_suffixes:
             target_modules.append(f"{layer_prefix}.{layer_idx}.{module_suffix}")
-    
+
     print(f"Creating LoRA adapters for layers {layer_indices}...")
-    
+
     # Create LoRA config
     lora_config = LoraConfig(
         r=lora_r,
@@ -278,7 +292,7 @@ def setup_lora_for_layers(
         target_modules=target_modules,
         task_type="CAUSAL_LM",
     )
-    
+
     # Apply LoRA to model
     return get_peft_model(model, lora_config)
 
@@ -286,25 +300,27 @@ def setup_lora_for_layers(
 def print_trainable_parameters(model: nn.Module) -> Tuple[int, int]:
     """
     Print information about trainable parameters in a model.
-    
+
     Args:
         model: The model to analyze
-        
+
     Returns:
         Tuple of (trainable_params, total_params)
     """
     trainable_params = 0
     total_params = 0
-    
+
     print("Parameters that will be trained:")
     for name, param in model.named_parameters():
         if param.requires_grad:
             trainable_params += param.numel()
             print(f"  - {name}: shape {param.shape}, device {param.device}")
         total_params += param.numel()
-    
+
     trainable_params_percentage = 100 * trainable_params / total_params
-    print(f"\nTotal trainable parameters: {trainable_params:,} ({trainable_params_percentage:.2f}%)")
+    print(
+        f"\nTotal trainable parameters: {trainable_params:,} ({trainable_params_percentage:.2f}%)"
+    )
     print(f"Total parameters: {total_params:,}")
-    
+
     return trainable_params, total_params
