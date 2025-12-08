@@ -1,27 +1,30 @@
 """Training script for hallucination detection probes."""
 
-import os
-import json
+import argparse
 import atexit
+import json
+import os
+from dataclasses import asdict
 from pathlib import Path
 from typing import List
-from dataclasses import asdict
-import argparse
 
 import torch
 import wandb
+from dotenv import load_dotenv
 from torch.utils.data import Subset
 from transformers import TrainingArguments
-from dotenv import load_dotenv
 
-from utils.file_utils import save_jsonl, save_json, load_yaml
+from probe.config import TrainingConfig
+from probe.dataset import (
+    TokenizedProbingDataset,
+    create_probing_dataset,
+    tokenized_probing_collate_fn,
+)
+from probe.trainer import ProbeTrainer
+from probe.value_head_probe import setup_probe
+from utils.file_utils import load_yaml, save_json, save_jsonl
 from utils.model_utils import load_model_and_tokenizer, print_trainable_parameters
 from utils.probe_loader import upload_probe_to_hf
-
-from probe.dataset import TokenizedProbingDataset, create_probing_dataset, tokenized_probing_collate_fn
-from probe.config import TrainingConfig
-from probe.value_head_probe import setup_probe
-from probe.trainer import ProbeTrainer
 
 
 def main(training_config: TrainingConfig):
@@ -32,8 +35,11 @@ def main(training_config: TrainingConfig):
 
     if training_config.upload_to_hf:
         assert os.environ.get("HF_WRITE_TOKEN", None) is not None
-    
-    wandb.init(project=training_config.wandb_project, name=training_config.probe_config.probe_id)
+
+    wandb.init(
+        project=training_config.wandb_project,
+        name=training_config.probe_config.probe_id,
+    )
 
     print("Training config:")
     for key, value in asdict(training_config).items():
@@ -41,21 +47,21 @@ def main(training_config: TrainingConfig):
 
     # Load model and tokenizer
     print(f"Loading model: {training_config.probe_config.model_name}")
-    model, tokenizer = load_model_and_tokenizer(
-        training_config.probe_config.model_name
-    )
+    model, tokenizer = load_model_and_tokenizer(training_config.probe_config.model_name)
 
-    if hasattr(model, 'config'):
+    if hasattr(model, "config"):
         try:
             model.config.use_cache = False
         except Exception:
             pass
-    if training_config.enable_gradient_checkpointing and hasattr(model, 'gradient_checkpointing_enable'):
+    if training_config.enable_gradient_checkpointing and hasattr(
+        model, "gradient_checkpointing_enable"
+    ):
         try:
             model.gradient_checkpointing_enable()
         except Exception:
             pass
-    
+
     print(f"Setting up probe: {training_config.probe_config.probe_id}")
     model, probe = setup_probe(model, training_config.probe_config)
 
@@ -71,7 +77,7 @@ def main(training_config: TrainingConfig):
         create_probing_dataset(config, tokenizer)
         for config in training_config.eval_dataset_configs
     ]
-    
+
     # Concatenate training datasets
     train_dataset = train_datasets[0]
     for dataset in train_datasets[1:]:
@@ -110,7 +116,7 @@ def main(training_config: TrainingConfig):
         learning_rate=training_config.learning_rate,
         seed=training_config.seed,
     )
-    
+
     # Add separate learning rates to training_args
     training_args.probe_head_lr = training_config.probe_head_lr
     training_args.lora_lr = training_config.lora_lr
@@ -125,7 +131,7 @@ def main(training_config: TrainingConfig):
         cfg=training_config,
         args=training_args,
         train_dataset=train_dataset,
-        eval_dataset=None, # this is a dummy argument is for the HF base Trainer class
+        eval_dataset=None,  # this is a dummy argument is for the HF base Trainer class
         data_collator=tokenized_probing_collate_fn,
         eval_steps=training_config.eval_steps,
         tokenizer=tokenizer,
@@ -137,12 +143,12 @@ def main(training_config: TrainingConfig):
         tokenizer.save_pretrained(training_config.probe_config.probe_path)
         save_json(
             training_config,
-            training_config.probe_config.probe_path / "training_config.json"
+            training_config.probe_config.probe_path / "training_config.json",
         )
 
     # Register save callback for unexpected exits
     atexit.register(save_model_callback)
-    
+
     print("Training...")
     trainer.train()
 
@@ -160,13 +166,13 @@ def main(training_config: TrainingConfig):
     if training_config.save_evaluation_metrics:
         save_json(
             eval_metrics,
-            training_config.probe_config.probe_path / "evaluation_results.json"
+            training_config.probe_config.probe_path / "evaluation_results.json",
         )
 
     wandb.finish()
 
     if training_config.upload_to_hf:
-        print(f"Uploading probe to HuggingFace Hub...")
+        print("Uploading probe to HuggingFace Hub...")
         upload_probe_to_hf(
             repo_id=training_config.probe_config.hf_repo_id,
             probe_id=training_config.probe_config.probe_id,
@@ -175,17 +181,19 @@ def main(training_config: TrainingConfig):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Train a hallucination detection probe")
+    parser = argparse.ArgumentParser(
+        description="Train a hallucination detection probe"
+    )
     parser.add_argument(
         "--config",
         type=str,
         default="configs/train_config.yaml",
-        help="Path to training configuration file"
+        help="Path to training configuration file",
     )
-    
+
     args = parser.parse_args()
-    
+
     # Load config from YAML
     training_config = TrainingConfig(**load_yaml(args.config))
-    
+
     main(training_config)
