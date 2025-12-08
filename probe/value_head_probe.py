@@ -71,6 +71,8 @@ class ValueHeadProbe(nn.Module):
         self.target_layer_name = self.target_module.__class__.__name__
         self.context_window_size = context_window_size
 
+        target_device = next(self.target_module.parameters()).device
+
         if not isinstance(model, PeftModel):
             print(
                 "WARNING: Model is not a PeftModel. Remember to add LoRA adapters if needed."
@@ -80,22 +82,35 @@ class ValueHeadProbe(nn.Module):
         if path:
             # Load pre-trained weights if path is provided
             self.value_head, _ = ValueHeadProbe.load_head(
-                path, device=model.device, dtype=model.dtype
+                path,
+                # device=model.device,
+                device=target_device,
+                dtype=model.dtype,
             )
         else:
             self.value_head = nn.Linear(
                 hidden_size * context_window_size,
                 1,
-                device=model.device,
+                # device=model.device,
+                device=target_device,
                 dtype=model.dtype,
             )
             print("WARNING: Using seed=42 for the initialization of the probe")
             torch.manual_seed(42)
             self._initialize_weights()
 
+        print(
+            f"probe value_head placed on {target_device=} (same as layer {layer_idx})"
+        )
+
         # Initialize hook state
         self._hooked_hidden_states: Optional[torch.Tensor] = None
         self._hook_fn = self._get_hook_fn()
+
+    @property
+    def device(self):
+        """Get device of probe"""
+        return self.value_head.weight.device
 
     def _initialize_weights(self):
         """Initialize the value head weights with small random values."""
