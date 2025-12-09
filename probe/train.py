@@ -58,6 +58,10 @@ def main(training_config: TrainingConfig):
     
     print(f"Setting up probe: {training_config.probe_config.probe_id}")
     model, probe = setup_probe(model, training_config.probe_config)
+    
+    # Tell Trainer the model is already on the correct devices (using device_map)
+    if hasattr(model, 'hf_device_map'):
+        probe.hf_device_map = model.hf_device_map
 
     print_trainable_parameters(probe)
 
