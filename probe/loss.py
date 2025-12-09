@@ -188,7 +188,7 @@ def mask_high_loss_spans(
 
     log_probs = torch.nn.functional.log_softmax(lm_logits, dim=-1)
     log_probs: Float[Tensor, "batch_size seq_len"] = log_probs.gather(
-        -1, input_ids[:, 1:].unsqueeze(-1)
+        -1, input_ids[:, 1:].to(lm_logits.device).unsqueeze(-1)
     ).squeeze(-1)
 
     for i in range(log_probs.shape[0]):  # Iterate over batch items

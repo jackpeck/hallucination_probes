@@ -69,22 +69,20 @@ def evaluate_probe(
     total_sparsity = 0
     num_batches = 0
 
+    device = probe.value_head.weight.device
+
     for batch in tqdm(eval_dataloader, desc="Evaluating"):
-        input_ids: Int[Tensor, "batch_size seq_len"] = batch["input_ids"].to(
-            probe.device
-        )
+        input_ids: Int[Tensor, "batch_size seq_len"] = batch["input_ids"].to(device)
         attention_mask: Int[Tensor, "batch_size seq_len"] = batch["attention_mask"].to(
-            probe.device
+            device
         )
         classification_labels: Float[Tensor, "batch_size seq_len"] = batch[
             "classification_labels"
-        ].to(probe.device)
+        ].to(device)
         classification_weights: Float[Tensor, "batch_size seq_len"] = batch[
             "classification_weights"
-        ].to(probe.device)
-        lm_labels: Int[Tensor, "batch_size seq_len"] = batch["lm_labels"].to(
-            probe.device
-        )
+        ].to(device)
+        lm_labels: Int[Tensor, "batch_size seq_len"] = batch["lm_labels"].to(device)
         pos_spans: List[List[List[int]]] = batch["pos_spans"]
         neg_spans: List[List[List[int]]] = batch["neg_spans"]
 
