@@ -71,18 +71,18 @@ class ProbeTrainer(Trainer):
         return_outputs=False,
         num_items_in_batch=None,
     ):
-        # Get the device from the underlying model if using DataParallel
-        device = (
-            model.module.device if isinstance(model, nn.DataParallel) else model.device
-        )
+        trainer_device = self.args.device
+        probe_device = model.value_head.weight.device
 
-        input_ids: torch.Tensor = batch["input_ids"].to(device)
-        attention_mask: torch.Tensor = batch["attention_mask"].to(device)
-        classification_labels: torch.Tensor = batch["classification_labels"].to(device)
-        classification_weights: torch.Tensor = batch["classification_weights"].to(
-            device
+        input_ids: torch.Tensor = batch["input_ids"].to(probe_device)
+        attention_mask: torch.Tensor = batch["attention_mask"].to(probe_device)
+        classification_labels: torch.Tensor = batch["classification_labels"].to(
+            probe_device
         )
-        lm_labels: torch.Tensor = batch["lm_labels"].to(device)
+        classification_weights: torch.Tensor = batch["classification_weights"].to(
+            probe_device
+        )
+        lm_labels: torch.Tensor = batch["lm_labels"].to(probe_device)
         pos_spans: List[List[Tuple[int, int]]] = batch["pos_spans"]
         neg_spans: List[List[Tuple[int, int]]] = batch["neg_spans"]
 
@@ -95,14 +95,14 @@ class ProbeTrainer(Trainer):
 
         lm_logits = outputs["lm_logits"]
         probe_logits = outputs["probe_logits"].squeeze(-1)  # shape [B, T]
-        lm_loss = outputs["lm_loss"]  # standard next-token CE loss
+        lm_loss = outputs["lm_loss"].to(probe_device)  # standard next-token CE loss
 
         if torch.isnan(lm_loss):
             print("WARNING: NaN detected in lm_loss")
-            lm_loss = torch.tensor(0.0, device=device)
+            lm_loss = torch.tensor(0.0, device=probe_device)
 
         # Compute KL divergence if needed
-        kl_loss = torch.tensor(0.0, device=device)
+        kl_loss = torch.tensor(0.0, device=probe_device)
         if self.lambda_kl > 0:
             kl_loss = compute_kl_divergence_loss(
                 model=model,
@@ -111,6 +111,7 @@ class ProbeTrainer(Trainer):
                 attention_mask=attention_mask,
                 lm_labels=lm_labels,
             )
+            kl_loss = kl_loss.to(probe_device)
 
         # Mask high-loss spans if configured
         if self.high_loss_threshold is not None:
@@ -144,7 +145,7 @@ class ProbeTrainer(Trainer):
             probe_loss = (1 - omega) * probe_loss + omega * max_aggr_probe_loss
         else:
             omega = 0.0
-            max_aggr_probe_loss = torch.tensor(0.0, device=device)
+            max_aggr_probe_loss = torch.tensor(0.0, device=probe_device)
 
         # Combine losses
         loss = (
@@ -176,14 +177,14 @@ class ProbeTrainer(Trainer):
             outputs["loss"] = loss
             outputs["probe_loss"] = probe_loss
             outputs["lm_loss"] = lm_loss
-            return (loss, outputs)
+            return (loss.to(trainer_device), outputs)
 
         # Clean up if not returning outputs
         del outputs, lm_logits, probe_logits
         gc.collect()
         torch.cuda.empty_cache()
 
-        return loss
+        return loss.to(trainer_device)
 
     def create_optimizer(self):
         """
@@ -325,9 +326,6 @@ class ProbeTrainer(Trainer):
             metrics["dataset_id"] = dataset.config.dataset_id
             save_jsonl([metrics], self.probe_dir / "eval_metrics.jsonl", append=True)
 
-        # Store the metrics for later retrieval
-        self._last_eval_metrics = all_eval_metrics
-        return all_eval_metrics
         # Store the metrics for later retrieval
         self._last_eval_metrics = all_eval_metrics
         return all_eval_metrics
