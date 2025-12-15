@@ -129,8 +129,8 @@ def upload_probe_to_hf(
     
     # Return the URL
     url = f"https://huggingface.co/{repo_id}"
-    if repo_subfolder:
-        url += f"/tree/main/{repo_subfolder}"
+    # if repo_subfolder:
+    #    url += f"/tree/main/{repo_subfolder}"
     
     print(f"Successfully uploaded probe to {url}")
     return url
