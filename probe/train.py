@@ -192,6 +192,7 @@ def main(training_config: TrainingConfig):
         training_config.probe_config.probe_path / "training_config.json"
     )
 
+    resume_from_checkpoint = None
     if training_config_path.exists():
         # Validate config matches before resuming
         validate_checkpoint_config(training_config_path, training_config)
@@ -201,6 +202,7 @@ def main(training_config: TrainingConfig):
         if latest_checkpoint is not None:
             print(f"Found existing checkpoint: {latest_checkpoint}")
             trainer.load_checkpoint(latest_checkpoint)
+            resume_from_checkpoint = latest_checkpoint
     else:
         # Save training config at the start (used for validation on resume)
         training_config.probe_config.probe_path.mkdir(parents=True, exist_ok=True)
@@ -211,7 +213,7 @@ def main(training_config: TrainingConfig):
         print(f"Saved training config to {training_config_path}")
 
     print("Training...")
-    trainer.train()
+    trainer.train(resume_from_checkpoint=resume_from_checkpoint)
 
     # Save the model
     print(f"Saving model to {training_config.probe_config.probe_path}")
