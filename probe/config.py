@@ -115,6 +115,11 @@ class TrainingConfig:
     logging_steps: int = 10
     seed: int = 42
 
+    # Checkpointing
+    checkpoint_steps: Optional[int] = (
+        None  # Save checkpoint every N steps (None = disabled)
+    )
+
     # Dataset configuration
     train_datasets: List[dict] = field(default_factory=list)
     eval_datasets: List[dict] = field(default_factory=list)

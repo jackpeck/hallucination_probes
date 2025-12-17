@@ -22,9 +22,43 @@ from probe.dataset import (
 )
 from probe.trainer import ProbeTrainer
 from probe.value_head_probe import setup_probe
-from utils.file_utils import load_yaml, save_json, save_jsonl
+from utils.file_utils import load_json, load_yaml, save_json, save_jsonl
 from utils.model_utils import load_model_and_tokenizer, print_trainable_parameters
 from utils.probe_loader import upload_probe_to_hf
+
+
+def _normalize_config(obj):
+    """Convert config objects to JSON-comparable primitives."""
+    if isinstance(obj, Path):
+        return str(obj)
+    if isinstance(obj, dict):
+        return {k: _normalize_config(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_normalize_config(v) for v in obj]
+    return obj
+
+
+def validate_checkpoint_config(
+    saved_config_path: Path, current_config: TrainingConfig
+) -> None:
+    """
+    Validate that the saved training config matches the current config exactly.
+
+    Args:
+        saved_config_path: Path to the saved training_config.json
+        current_config: Current TrainingConfig being used
+
+    Raises:
+        AssertionError: If configs differ
+    """
+    saved_config = _normalize_config(load_json(saved_config_path))
+    current_config_dict = _normalize_config(asdict(current_config))
+
+    if saved_config != current_config_dict:
+        raise AssertionError(
+            "Training config mismatch with saved checkpoint! "
+            "Use the same config or delete the checkpoints directory to start fresh."
+        )
 
 
 def main(training_config: TrainingConfig):
@@ -152,6 +186,29 @@ def main(training_config: TrainingConfig):
 
     # Register save callback for unexpected exits
     atexit.register(save_model_callback)
+
+    # Check for existing checkpoints and auto-resume
+    training_config_path = (
+        training_config.probe_config.probe_path / "training_config.json"
+    )
+
+    if training_config_path.exists():
+        # Validate config matches before resuming
+        validate_checkpoint_config(training_config_path, training_config)
+
+        # Find latest checkpoint
+        latest_checkpoint = trainer.get_latest_checkpoint()
+        if latest_checkpoint is not None:
+            print(f"Found existing checkpoint: {latest_checkpoint}")
+            trainer.load_checkpoint(latest_checkpoint)
+    else:
+        # Save training config at the start (used for validation on resume)
+        training_config.probe_config.probe_path.mkdir(parents=True, exist_ok=True)
+        save_json(
+            training_config,
+            training_config_path,
+        )
+        print(f"Saved training config to {training_config_path}")
 
     print("Training...")
     trainer.train()

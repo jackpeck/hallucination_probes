@@ -23,7 +23,7 @@ from probe.loss import (
     mask_high_loss_spans,
 )
 from probe.value_head_probe import ValueHeadProbe
-from utils.file_utils import save_jsonl
+from utils.file_utils import load_json, save_json, save_jsonl
 from utils.metrics import print_eval_metrics
 
 
@@ -53,6 +53,8 @@ class ProbeTrainer(Trainer):
         self.gradient_accumulation_steps: int = cfg.gradient_accumulation_steps
         self.eval_steps: Optional[int] = eval_steps
         self.probe_dir: Path = cfg.probe_config.probe_path
+        self.checkpoints_dir: Path = cfg.probe_config.probe_path / "checkpoints"
+        self.checkpoint_steps: Optional[int] = cfg.checkpoint_steps
         self.tokenizer: AutoTokenizer = tokenizer
         self.high_loss_threshold: Optional[float] = cfg.high_loss_threshold
         self.sparsity_penalty_weight: float = cfg.sparsity_penalty_weight
@@ -329,3 +331,156 @@ class ProbeTrainer(Trainer):
         # Store the metrics for later retrieval
         self._last_eval_metrics = all_eval_metrics
         return all_eval_metrics
+
+    def save_checkpoint(self, checkpoint_dir: Path):
+        """
+        Save a full training checkpoint including model weights, optimizer,
+        scheduler, and trainer state.
+
+        Args:
+            checkpoint_dir: Directory to save the checkpoint to
+        """
+        checkpoint_dir.mkdir(parents=True, exist_ok=True)
+
+        # Save probe (value head + LoRA adapters)
+        self.model.save(checkpoint_dir)
+
+        # Save optimizer state
+        torch.save(self.optimizer.state_dict(), checkpoint_dir / "optimizer.pt")
+
+        # Save scheduler state
+        if self.lr_scheduler is not None:
+            torch.save(self.lr_scheduler.state_dict(), checkpoint_dir / "scheduler.pt")
+
+        # Save trainer state
+        trainer_state = {
+            "global_step": self.state.global_step,
+            "epoch": self.state.epoch,
+            "best_metric": self.state.best_metric,
+            "max_steps": self.state.max_steps,
+        }
+        save_json(trainer_state, checkpoint_dir / "trainer_state.json")
+
+        print(f"Checkpoint saved to {checkpoint_dir}")
+
+    def load_checkpoint(self, checkpoint_dir: Path):
+        """
+        Load a training checkpoint and restore model weights, optimizer,
+        scheduler, and trainer state.
+
+        Args:
+            checkpoint_dir: Directory containing the checkpoint
+        """
+        print(f"Loading checkpoint from {checkpoint_dir}")
+
+        # Load probe head weights
+        probe_head_path = checkpoint_dir / "probe_head.bin"
+        if probe_head_path.exists():
+            state_dict = torch.load(
+                probe_head_path,
+                map_location=self.model.value_head.weight.device,
+                weights_only=True,
+            )
+            self.model.value_head.load_state_dict(state_dict)
+
+        # Load LoRA adapters if present
+        adapter_config_path = checkpoint_dir / "adapter_config.json"
+        if adapter_config_path.exists():
+            from peft import PeftModel
+
+            if isinstance(self.model.model, PeftModel):
+                # Load adapter weights into existing PeftModel
+                adapter_weights_path = checkpoint_dir / "adapter_model.safetensors"
+                if adapter_weights_path.exists():
+                    from safetensors.torch import load_file
+
+                    adapter_state = load_file(adapter_weights_path)
+                    self.model.model.load_state_dict(adapter_state, strict=False)
+
+        # Load optimizer state
+        optimizer_path = checkpoint_dir / "optimizer.pt"
+        if optimizer_path.exists() and self.optimizer is not None:
+            probe_device = self.model.value_head.weight.device
+            optimizer_state = torch.load(
+                optimizer_path, map_location=probe_device, weights_only=True
+            )
+            self.optimizer.load_state_dict(optimizer_state)
+
+        # Load scheduler state
+        scheduler_path = checkpoint_dir / "scheduler.pt"
+        if scheduler_path.exists() and self.lr_scheduler is not None:
+            scheduler_state = torch.load(
+                scheduler_path, map_location="cpu", weights_only=True
+            )
+            self.lr_scheduler.load_state_dict(scheduler_state)
+
+        # Load trainer state
+        trainer_state_path = checkpoint_dir / "trainer_state.json"
+        if trainer_state_path.exists():
+            trainer_state = load_json(trainer_state_path)
+            self.state.global_step = trainer_state.get("global_step", 0)
+            self.state.epoch = trainer_state.get("epoch", 0)
+            self.state.best_metric = trainer_state.get("best_metric", None)
+            if "max_steps" in trainer_state:
+                self.state.max_steps = trainer_state["max_steps"]
+
+        print(f"Resumed from step {self.state.global_step}, epoch {self.state.epoch}")
+
+    def get_latest_checkpoint(self) -> Optional[Path]:
+        """
+        Find the most recent checkpoint in the checkpoints directory.
+
+        Returns:
+            Path to the latest checkpoint directory, or None if no checkpoints exist
+        """
+        if not self.checkpoints_dir.exists():
+            return None
+
+        # Find all checkpoint directories (named checkpoint-{step})
+        checkpoint_dirs = [
+            d
+            for d in self.checkpoints_dir.iterdir()
+            if d.is_dir() and d.name.startswith("checkpoint-")
+        ]
+
+        if not checkpoint_dirs:
+            return None
+
+        # Extract step numbers and find the latest
+        def get_step(checkpoint_dir: Path) -> int:
+            try:
+                return int(checkpoint_dir.name.split("-")[1])
+            except (IndexError, ValueError):
+                return -1
+
+        latest = max(checkpoint_dirs, key=get_step)
+        return latest
+
+    def _maybe_save_checkpoint(self):
+        """
+        Check if we should save a checkpoint at the current step and save if needed.
+        Called after each training step.
+        """
+        if self.checkpoint_steps is None:
+            return
+
+        if (
+            self.state.global_step > 0
+            and self.state.global_step % self.checkpoint_steps == 0
+        ):
+            checkpoint_dir = (
+                self.checkpoints_dir / f"checkpoint-{self.state.global_step}"
+            )
+            self.save_checkpoint(checkpoint_dir)
+
+    def training_step(self, model, inputs, num_items_in_batch=None):
+        """
+        Override training_step to add checkpoint saving after each step.
+        """
+        # Call parent's training_step
+        loss = super().training_step(model, inputs, num_items_in_batch)
+
+        # Check if we should save a checkpoint
+        self._maybe_save_checkpoint()
+
+        return loss
