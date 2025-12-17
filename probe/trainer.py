@@ -363,14 +363,14 @@ class ProbeTrainer(Trainer):
 
         print(f"Checkpoint saved to {checkpoint_dir}")
 
-    def load_checkpoint(self, checkpoint_dir: Path):
+    def _load_from_checkpoint(self, resume_from_checkpoint, model=None):
         """
-        Load a training checkpoint and restore model weights, optimizer,
-        scheduler, and trainer state.
+        Override HF Trainer's checkpoint loading to use our custom format.
 
-        Args:
-            checkpoint_dir: Directory containing the checkpoint
+        Called by train() after optimizer/scheduler are created, so we can
+        properly restore their states.
         """
+        checkpoint_dir = Path(resume_from_checkpoint)
         print(f"Loading checkpoint from {checkpoint_dir}")
 
         # Load probe head weights
@@ -386,10 +386,7 @@ class ProbeTrainer(Trainer):
         # Load LoRA adapters if present
         adapter_config_path = checkpoint_dir / "adapter_config.json"
         if adapter_config_path.exists():
-            from peft import PeftModel
-
             if isinstance(self.model.model, PeftModel):
-                # Load adapter weights into existing PeftModel
                 adapter_weights_path = checkpoint_dir / "adapter_model.safetensors"
                 if adapter_weights_path.exists():
                     from safetensors.torch import load_file
@@ -397,7 +394,7 @@ class ProbeTrainer(Trainer):
                     adapter_state = load_file(adapter_weights_path)
                     self.model.model.load_state_dict(adapter_state, strict=False)
 
-        # Load optimizer state
+        # Load optimizer state (optimizer exists now since HF Trainer created it)
         optimizer_path = checkpoint_dir / "optimizer.pt"
         if optimizer_path.exists() and self.optimizer is not None:
             probe_device = self.model.value_head.weight.device
@@ -414,16 +411,7 @@ class ProbeTrainer(Trainer):
             )
             self.lr_scheduler.load_state_dict(scheduler_state)
 
-        # Load trainer state
-        trainer_state_path = checkpoint_dir / "trainer_state.json"
-        if trainer_state_path.exists():
-            trainer_state = load_json(trainer_state_path)
-            self.state.global_step = trainer_state.get("global_step", 0)
-            self.state.epoch = trainer_state.get("epoch", 0)
-            self.state.best_metric = trainer_state.get("best_metric", None)
-            if "max_steps" in trainer_state:
-                self.state.max_steps = trainer_state["max_steps"]
-
+        print("Checkpoint loaded successfully")
         print(f"Resumed from step {self.state.global_step}, epoch {self.state.epoch}")
 
     def get_latest_checkpoint(self) -> Optional[Path]:

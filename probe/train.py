@@ -197,11 +197,10 @@ def main(training_config: TrainingConfig):
         # Validate config matches before resuming
         validate_checkpoint_config(training_config_path, training_config)
 
-        # Find latest checkpoint
+        # Find latest checkpoint - HF Trainer will handle loading via _load_from_checkpoint
         latest_checkpoint = trainer.get_latest_checkpoint()
         if latest_checkpoint is not None:
             print(f"Found existing checkpoint: {latest_checkpoint}")
-            trainer.load_checkpoint(latest_checkpoint)
             resume_from_checkpoint = latest_checkpoint
     else:
         # Save training config at the start (used for validation on resume)
