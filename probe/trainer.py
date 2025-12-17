@@ -389,10 +389,11 @@ class ProbeTrainer(Trainer):
             if isinstance(self.model.model, PeftModel):
                 adapter_weights_path = checkpoint_dir / "adapter_model.safetensors"
                 if adapter_weights_path.exists():
+                    from peft import set_peft_model_state_dict
                     from safetensors.torch import load_file
 
                     adapter_state = load_file(adapter_weights_path)
-                    self.model.model.load_state_dict(adapter_state, strict=False)
+                    set_peft_model_state_dict(self.model.model, adapter_state)
 
         # Load optimizer state (optimizer exists now since HF Trainer created it)
         optimizer_path = checkpoint_dir / "optimizer.pt"
