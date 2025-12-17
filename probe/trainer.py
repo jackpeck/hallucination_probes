@@ -352,14 +352,7 @@ class ProbeTrainer(Trainer):
         if self.lr_scheduler is not None:
             torch.save(self.lr_scheduler.state_dict(), checkpoint_dir / "scheduler.pt")
 
-        # Save trainer state
-        trainer_state = {
-            "global_step": self.state.global_step,
-            "epoch": self.state.epoch,
-            "best_metric": self.state.best_metric,
-            "max_steps": self.state.max_steps,
-        }
-        save_json(trainer_state, checkpoint_dir / "trainer_state.json")
+        self.state.save_to_json(checkpoint_dir / "trainer_state.json")
 
         print(f"Checkpoint saved to {checkpoint_dir}")
 
