@@ -415,6 +415,16 @@ class ProbeTrainer(Trainer):
         print("Checkpoint loaded successfully")
         print(f"Resumed from step {self.state.global_step}, epoch {self.state.epoch}")
 
+    def _load_optimizer_and_scheduler(self, checkpoint):
+        """
+        Override to prevent HF Trainer from loading optimizer/scheduler.
+        We handle this in _load_from_checkpoint instead.
+
+        to avoid
+            ValueError: Due to a serious vulnerability issue in `torch.load`, even with `weights_only=True`, we now require users to upgrade torch to at least v2.6 in order to use the function. This version restriction does not apply when loading files with safetensors.
+        """
+        pass
+
     def get_latest_checkpoint(self) -> Optional[Path]:
         """
         Find the most recent checkpoint in the checkpoints directory.
